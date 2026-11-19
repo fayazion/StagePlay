@@ -45,6 +45,8 @@ class StagePlayCoreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             show=str(Path(t)/'show.json')
             media=str(Path(t)/'media'/'sample.mp4')
-            self.assertEqual(resolve_saved_path(media_path_for_save(media,show),show), media)
-
+            self.assertEqual(
+    Path(resolve_saved_path(media_path_for_save(media, show), show)).resolve(),
+    Path(media).resolve()
+)
 if __name__=='__main__': unittest.main()
