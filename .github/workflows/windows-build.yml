@@ -1,4 +1,4 @@
-name: Fabriquer StagePlay pour Windows
+name: Fabriquer StagePlay V2 pour Windows
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Recuperer le code
         uses: actions/checkout@v4
@@ -22,23 +22,25 @@ jobs:
         run: |
           choco install vlc -y --no-progress --limit-output
           if (!(Test-Path 'C:\Program Files\VideoLAN\VLC\libvlc.dll')) { throw 'VLC 64 bits introuvable' }
-      - name: Installer les bibliotheques
+      - name: Installer les dependances
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+      - name: Tester le noyau
+        run: python -m unittest discover -s tests -v
       - name: Verifier la syntaxe
-        run: python -m py_compile stageplay.py
-      - name: Compiler le dossier portable
+        run: python -m py_compile stageplay.py stageplay_core.py stageplay_output.py
+      - name: Compiler StagePlay V2
         shell: pwsh
         run: |
           $v = 'C:\Program Files\VideoLAN\VLC'
-          python -m PyInstaller --noconfirm --clean --windowed --onedir --name StagePlayLite --collect-all vlc --add-binary "$v\libvlc.dll;." --add-binary "$v\libvlccore.dll;." --add-data "$v\plugins;plugins" stageplay.py
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name StagePlayV2 --collect-all vlc --collect-all pymupdf --add-binary "$v\libvlc.dll;." --add-binary "$v\libvlccore.dll;." --add-data "$v\plugins;plugins" stageplay.py
           if ($LASTEXITCODE -ne 0) { throw 'Echec de PyInstaller' }
-          if (!(Test-Path 'dist\StagePlayLite\StagePlayLite.exe')) { throw 'EXE introuvable' }
-      - name: Telecharger le programme portable
+          if (!(Test-Path 'dist\StagePlayV2\StagePlayV2.exe')) { throw 'EXE introuvable' }
+      - name: Publier le programme portable
         uses: actions/upload-artifact@v4
         with:
-          name: StagePlayLite-Windows-portable
-          path: dist/StagePlayLite/
+          name: StagePlayV2-Windows-portable
+          path: dist/StagePlayV2/
           if-no-files-found: error
           retention-days: 14
