@@ -1,0 +1,44 @@
+name: Fabriquer StagePlay pour Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v4
+      - name: Installer Python 64 bits
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Installer VLC 64 bits
+        shell: pwsh
+        run: |
+          choco install vlc -y --no-progress --limit-output
+          if (!(Test-Path 'C:\Program Files\VideoLAN\VLC\libvlc.dll')) { throw 'VLC 64 bits introuvable' }
+      - name: Installer les bibliotheques
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Verifier la syntaxe
+        run: python -m py_compile stageplay.py
+      - name: Compiler le dossier portable
+        shell: pwsh
+        run: |
+          $v = 'C:\Program Files\VideoLAN\VLC'
+          python -m PyInstaller --noconfirm --clean --windowed --onedir --name StagePlayLite --collect-all vlc --add-binary "$v\libvlc.dll;." --add-binary "$v\libvlccore.dll;." --add-data "$v\plugins;plugins" stageplay.py
+          if ($LASTEXITCODE -ne 0) { throw 'Echec de PyInstaller' }
+          if (!(Test-Path 'dist\StagePlayLite\StagePlayLite.exe')) { throw 'EXE introuvable' }
+      - name: Telecharger le programme portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: StagePlayLite-Windows-portable
+          path: dist/StagePlayLite/
+          if-no-files-found: error
+          retention-days: 14
