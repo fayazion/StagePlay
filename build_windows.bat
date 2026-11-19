@@ -1,24 +1,25 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo [1/3] Preparation environnement Python...
-py -3 -m venv .venv
-if errorlevel 1 (echo Python 3 introuvable & pause & exit /b 1)
-call .venv\Scripts\activate.bat
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-if errorlevel 1 (echo Installation impossible & pause & exit /b 1)
-echo [2/3] Recherche VLC...
-set "VLCDIR=%ProgramFiles%\VideoLAN\VLC"
-if not exist "%VLCDIR%\libvlc.dll" set "VLCDIR=%ProgramFiles(x86)%\VideoLAN\VLC"
-if not exist "%VLCDIR%\libvlc.dll" (
- echo VLC non trouve. Installer VLC 64 bits avant de compiler.
- pause
- exit /b 1
+where py >nul 2>&1
+if %errorlevel%==0 (set "PY=py -3.12") else (set "PY=python")
+%PY% -m pip install --upgrade pip
+if errorlevel 1 goto bad
+%PY% -m pip install -r requirements.txt
+if errorlevel 1 goto bad
+%PY% -m unittest discover -s tests -v
+if errorlevel 1 goto bad
+set "VLC=C:\Program Files\VideoLAN\VLC"
+if not exist "%VLC%\libvlc.dll" (
+ echo VLC 64 bits non trouve dans %%ProgramFiles%%. Installe VLC 64 bits.
+ goto bad
 )
-echo [3/3] Construction dossier portable...
-python -m PyInstaller --noconfirm --clean --windowed --onedir --name StagePlayLite --collect-all vlc --add-binary "%VLCDIR%\libvlc.dll;." --add-binary "%VLCDIR%\libvlccore.dll;." --add-data "%VLCDIR%\plugins;plugins" stageplay.py
-if errorlevel 1 (echo Echec PyInstaller & pause & exit /b 1)
+%PY% -m PyInstaller --noconfirm --clean --windowed --onedir --name StagePlayV2 --collect-all vlc --collect-all pymupdf --add-binary "%VLC%\libvlc.dll;." --add-binary "%VLC%\libvlccore.dll;." --add-data "%VLC%\plugins;plugins" stageplay.py
+if errorlevel 1 goto bad
 echo.
-echo Compilation terminee: dist\StagePlayLite\StagePlayLite.exe
+echo Programme portable cree: dist\StagePlayV2\StagePlayV2.exe
+goto end
+:bad
+echo Une erreur a interrompu la compilation.
+:end
 pause
